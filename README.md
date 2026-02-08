@@ -11,10 +11,11 @@ Designed for interviews, PoCs, and stakeholder demonstrations, this project show
 *   **Dual-Mode API**:
     *   `/v1/rag/query`: Fast, citation-backed RAG for direct question answering.
     *   `/v1/agent/solve`: Multi-step reasoning agent (Plan → Retrieve → Answer → Validate) using LangGraph.
+*   **System Observability**: Integrated `/v1/rag/status` and `/health` endpoints for real-time system monitoring.
 *   **Traceability**: Every answer includes precise citations with similarity scores and links to source document chunks.
 *   **Provider Agnostic**: Switch between OpenAI, Anthropic, and HuggingFace models via environment variables.
 *   **Local-First**: Default setup uses local embeddings (SentenceTransformers) and vector store (FAISS) for zero-cost operation.
-*   **Production Ready**: Includes Pydantic validation, structured logging, Docker support, and a scalable directory structure.
+*   **Production Ready**: Includes Pydantic validation (with OpenAPI examples), structured logging, CORS support, and global exception handling.
 
 ## 🏗️ Architecture
 
@@ -114,14 +115,14 @@ graph TD
 agentic-rag-llm-demo/
 ├── app/
 │   ├── main.py              # FastAPI application entry point
-│   ├── api/                 # Endpoint routers
+│   ├── api/                 # Endpoint routers (rag, agent, status)
 │   ├── rag/                 # RAG logic (ingestion, retrieval)
 │   ├── agent/               # LangGraph agent definitions
-│   └── safety/              # Validators and guardrails
+│   ├── llm/                 # LLM provider abstraction and prompts
+│   └── models.py            # Centralized Pydantic models
 ├── data/
 │   └── sample_docs/         # Source documents for ingestion
-├── docker/                  # Docker configuration
-├── scripts/                 # Utility scripts (ingest, run)
+├── scripts/                 # Utility scripts (ingest, dev_run, benchmarks)
 ├── tests/                   # Unit and integration tests
 ├── .env.example             # Environment variable template
 ├── requirements.txt         # Python dependencies
@@ -147,10 +148,13 @@ Run the test suite to ensure everything is working correctly.
 
 ```bash
 # Run all tests
-pytest
+PYTHONPATH=. pytest
 
-# Run specific test file
-pytest tests/test_rag.py
+# Run unit tests
+PYTHONPATH=. pytest tests/unit/
+
+# Run integration tests
+PYTHONPATH=. pytest tests/integration/
 ```
 
 ## 🛡️ License
