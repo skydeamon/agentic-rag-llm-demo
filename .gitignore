@@ -48,7 +48,8 @@ __pycache__/
 !ingest.py
 !retriever.py
 !test_*.py
-
+!models.py
+!benchmark_retriever.py
 
 # Base files
 !dev_run.sh

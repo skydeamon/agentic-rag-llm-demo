@@ -3,7 +3,7 @@ import faiss, os, pickle
 import numpy as np
 from typing import List, Dict
 from sentence_transformers import SentenceTransformer
-from ..safety.validators import AnswerPayload, Citation
+from ..models import AnswerPayload, Citation
 
 class RagService:
     def __init__(self, store_path: str = '.vector_store/faiss', embed_model: str = 'all-MiniLM-L6-v2'):
@@ -14,8 +14,14 @@ class RagService:
             self.chunks = pickle.load(f)
         self.embedder = SentenceTransformer(embed_model)
 
+    def preprocess_query(self, query: str) -> str:
+        # Preprocessing: strip whitespace, remove newlines, limit length
+        q = query.strip().replace('\n', ' ')
+        return q[:1000]
+
     def retrieve(self, query: str, top_k: int = 4):
-        q = self.embedder.encode(query).astype('float32')
+        clean_query = self.preprocess_query(query)
+        q = self.embedder.encode(clean_query).astype('float32')
         D, I = self.index.search(np.expand_dims(q, 0), top_k)
         results = []
         for rank, (score, idx) in enumerate(zip(D[0], I[0])):

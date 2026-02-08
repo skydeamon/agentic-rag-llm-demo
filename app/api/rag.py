@@ -1,16 +1,10 @@
-
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
 from typing import List, Optional
 from ..rag.retriever import RagService
-from ..safety.validators import AnswerPayload
+from ..models import AnswerPayload, RagRequest
 
 router = APIRouter()
 rag = RagService()
-
-class RagRequest(BaseModel):
-    query: str
-    top_k: int = 4
 
 @router.post('/query', response_model=AnswerPayload)
 async def query_rag(req: RagRequest):
