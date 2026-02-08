@@ -2,8 +2,8 @@
 import os
 from typing import List
 from langchain_community.vectorstores import FAISS
-from langchain_community.docstore.document import Document
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_core.documents import Document
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from sentence_transformers import SentenceTransformer
 import pickle
 
@@ -18,9 +18,20 @@ class Ingestor:
         for dirpath, _, filenames in os.walk(root):
             for fn in filenames:
                 p = os.path.join(dirpath, fn)
-                with open(p, 'r', encoding='utf-8', errors='ignore') as f:
-                    text = f.read()
-                docs.append(Document(page_content=text, metadata={"source": p}))
+                try:
+                    if fn.lower().endswith('.pdf'):
+                        from pypdf import PdfReader
+                        reader = PdfReader(p)
+                        text = ""
+                        for page in reader.pages:
+                            text += page.extract_text() or ""
+                        docs.append(Document(page_content=text, metadata={"source": p}))
+                    else:
+                        with open(p, 'r', encoding='utf-8', errors='ignore') as f:
+                            text = f.read()
+                        docs.append(Document(page_content=text, metadata={"source": p}))
+                except Exception as e:
+                    print(f"Error loading {p}: {e}")
         return docs
 
     def build(self, docs_root: str = 'data/sample_docs'):

@@ -31,14 +31,8 @@ class RagService:
     def synthesize(self, query: str, ctx: List[Dict]) -> str:
         # Placeholder: deterministic stitcher with simple template
         # Replace with provider LLM call and prompt template
-        bullets = '
-'.join([f"- ({c['score']:.2f}) {c['chunk'][:200].replace('
-',' ')}" for c in ctx])
-        answer = f"Answer (draft) for: '{query}'.
-Key retrieved evidence:
-{bullets}
-
-(Replace with LLM call and cite sources.)"
+        bullets = '\n'.join([f"- ({c['score']:.2f}) {c['chunk'][:200].replace('\n',' ')}" for c in ctx])
+        answer = f"Answer (draft) for: '{query}'.\nKey retrieved evidence:\n{bullets}\n\n(Replace with LLM call and cite sources.)"
         return answer
 
     def answer(self, query: str, top_k: int = 4) -> AnswerPayload:
