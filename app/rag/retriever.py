@@ -1,0 +1,48 @@
+
+import faiss, os, pickle
+import numpy as np
+from typing import List, Dict
+from sentence_transformers import SentenceTransformer
+from ..safety.validators import AnswerPayload, Citation
+
+class RagService:
+    def __init__(self, store_path: str = '.vector_store/faiss', embed_model: str = 'all-MiniLM-L6-v2'):
+        if not os.path.exists(store_path):
+            raise RuntimeError('Vector store not found. Run ingestion first.')
+        self.index = faiss.read_index(store_path)
+        with open(store_path + '.meta.pkl', 'rb') as f:
+            self.chunks = pickle.load(f)
+        self.embedder = SentenceTransformer(embed_model)
+
+    def retrieve(self, query: str, top_k: int = 4):
+        q = self.embedder.encode(query).astype('float32')
+        D, I = self.index.search(np.expand_dims(q, 0), top_k)
+        results = []
+        for rank, (score, idx) in enumerate(zip(D[0], I[0])):
+            doc = self.chunks[int(idx)]
+            results.append({
+                'id': int(idx),
+                'score': float(score),
+                'source': doc.metadata.get('source','unknown'),
+                'chunk': doc.page_content[:800]
+            })
+        return results
+
+    def synthesize(self, query: str, ctx: List[Dict]) -> str:
+        # Placeholder: deterministic stitcher with simple template
+        # Replace with provider LLM call and prompt template
+        bullets = '
+'.join([f"- ({c['score']:.2f}) {c['chunk'][:200].replace('
+',' ')}" for c in ctx])
+        answer = f"Answer (draft) for: '{query}'.
+Key retrieved evidence:
+{bullets}
+
+(Replace with LLM call and cite sources.)"
+        return answer
+
+    def answer(self, query: str, top_k: int = 4) -> AnswerPayload:
+        ctx = self.retrieve(query, top_k=top_k)
+        text = self.synthesize(query, ctx)
+        cits = [Citation(**c) for c in ctx]
+        return AnswerPayload(answer=text, citations=cits)

@@ -1,0 +1,54 @@
+
+*
+
+__pycache__/
+*.pyc
+.env
+.venv/
+.env.local
+.cache/
+.vector_store/
+
+# editors
+.vscode/
+.idea/
+
+!.gitignore
+!README.md
+!requirements.txt
+!.env.example
+!Dockerfile
+!clinical_stub.md
+
+
+# Directories
+!sample_docs/
+!data/
+!app/
+!agent/
+!rag/
+!api/
+!safety/
+!scripts/
+!tests/
+!docker/
+
+
+# Python files
+!agent.py
+!rag.py
+!main.py
+!config.py
+!utils.py
+!vector_store.py
+!llm.py
+!validators.py
+!graph.py
+!ingest.py
+!retriever.py
+!test_*.py
+
+
+# Base files
+!dev_run.sh
+!ingest.sh
