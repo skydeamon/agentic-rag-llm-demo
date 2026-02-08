@@ -34,6 +34,7 @@ __pycache__/
 !docker/
 !unit/
 !llm/
+!integration/
 
 
 # Python files
@@ -52,8 +53,9 @@ __pycache__/
 !models.py
 !prompts.py
 !provider.py
+!status.py
 !benchmark_retrieval.py
 
-# Base files
+# Bash files
 !dev_run.sh
 !ingest.sh

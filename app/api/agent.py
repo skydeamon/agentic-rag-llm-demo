@@ -1,14 +1,9 @@
-
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
 from ..agent.graph import AgentFlow
-from ..safety.validators import AgentAnswer
+from ..models import AgentAnswer, AgentRequest
 
 router = APIRouter()
 flow = AgentFlow()
-
-class AgentRequest(BaseModel):
-    question: str
 
 @router.post('/solve', response_model=AgentAnswer)
 async def solve(req: AgentRequest):

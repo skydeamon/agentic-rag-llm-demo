@@ -2,7 +2,7 @@
 from typing import Dict, Any, List
 from pydantic import BaseModel
 from ..rag.retriever import RagService
-from ..safety.validators import AgentAnswer, Citation
+from ..models import AgentAnswer, Citation
 
 # Minimal stand‑in for a LangGraph flow. Replace with real nodes/edges.
 class AgentFlow:
