@@ -24,9 +24,14 @@ def retriever():
         ingestor = Ingestor(store_path=index_path)
         ingestor.build(docs_root=test_docs_dir)
 
-        # Initialize service with temp index
-        service = RagService(store_path=index_path)
-        yield service
+        # Mock LLM Provider
+        from unittest.mock import MagicMock
+        mock_llm = MagicMock()
+        mock_llm.generate.return_value = "Mocked LLM Answer"
+
+        # Initialize service with temp index and mock LLM
+        service = RagService(store_path=index_path, llm_provider=mock_llm)
+        yield service, mock_llm
 
     finally:
         # Cleanup
@@ -34,20 +39,23 @@ def retriever():
         shutil.rmtree(test_index_dir)
 
 def test_preprocess_query(retriever):
+    svc, _ = retriever
     # Test whitespace stripping and newline removal
     raw_query = "  What is \n coronary   physiology?  \n"
     expected = "What is   coronary   physiology?"
-    processed = retriever.preprocess_query(raw_query)
+    processed = svc.preprocess_query(raw_query)
     assert processed == expected
 
 def test_preprocess_query_length_limit(retriever):
+    svc, _ = retriever
     # Test truncation
     long_query = "a" * 2000
-    processed = retriever.preprocess_query(long_query)
+    processed = svc.preprocess_query(long_query)
     assert len(processed) == 1000
 
 def test_retrieve_returns_results(retriever):
-    res = retriever.retrieve("coronary physiology", top_k=2)
+    svc, _ = retriever
+    res = svc.retrieve("coronary physiology", top_k=2)
     assert len(res) > 0
     # Check that we retrieved the relevant doc
     # doc1 has "Coronary physiology"
@@ -58,9 +66,35 @@ def test_retrieve_returns_results(retriever):
     assert 'source' in res[0]
 
 def test_answer_returns_payload(retriever):
-    # Test high-level answer method returns Pydantic model
-    payload = retriever.answer("coronary physiology", top_k=2)
+    svc, mock_llm = retriever
+    # Mock LLM response that mentions only doc1
+    mock_llm.generate.return_value = "According to [Source: doc1.txt], coronary physiology is vital."
+    
+    payload = svc.answer("coronary physiology", top_k=2)
+    
     assert isinstance(payload, AnswerPayload)
-    assert len(payload.citations) > 0
-    assert isinstance(payload.citations[0], Citation)
-    assert len(payload.answer) > 0
+    assert "coronary physiology is vital" in payload.answer
+    # Should only have 1 citation because only doc1.txt was mentioned
+    assert len(payload.citations) == 1
+    assert "doc1.txt" in payload.citations[0].source
+
+def test_answer_handles_llm_error(retriever):
+    svc, mock_llm = retriever
+    mock_llm.generate.side_effect = Exception("API Timeout")
+    
+    payload = svc.answer("coronary physiology", top_k=2)
+    
+    # Should degrade gracefully
+    assert "technical issue" in payload.answer
+    assert "API Timeout" in payload.answer
+    assert len(payload.citations) == 0
+
+def test_answer_no_mentions_yields_no_citations(retriever):
+    svc, mock_llm = retriever
+    # LLM provides answer but no formatting [Source: ...]
+    mock_llm.generate.return_value = "I think it's study of heart."
+    
+    payload = svc.answer("coronary physiology", top_k=2)
+    
+    assert len(payload.citations) == 0
+
