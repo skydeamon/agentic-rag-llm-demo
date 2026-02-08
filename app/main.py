@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from .api.rag import router as rag_router
 from .api.agent import router as agent_router
 
-app = FastAPI(title="Cerebria LLM Demo", version="0.1.0")
+app = FastAPI(title="Agentic LLM Demo", version="0.1.0")
 
 @app.get('/health')
 def health():

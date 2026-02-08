@@ -1,102 +1,158 @@
+# Agentic LLM Demo
 
-# RAG FastAPI + LangGraph Agent Scaffold
+A production-leaning scaffold for demonstrating **RAG (Retrieval-Augmented Generation)** and **Agentic Workflow** capabilities using Python, FastAPI, and LangGraph.
 
-**Purpose.** This repository gives you a production-leaning scaffold to demonstrate two things:
-
-1) A **RAG FastAPI service** that returns answers with **citations** from your curated corpus
-2) A **basic LangGraph tool‑use flow** that chains retrieval + reasoning + formatting with simple guardrails
-
-It is designed to be:
-- **Traceable** (citations, input/output logging)
-- **Testable** (eval hooks, contract tests)
-- **Portable** (Dockerfile, `.env`‑driven config)
+Designed for interviews, PoCs, and stakeholder demonstrations, this project showcases traceability, testability, and portability in building LLM-powered applications.
 
 ---
 
-## Architecture (High level)
+## 🚀 Key Features
+
+*   **Dual-Mode API**:
+    *   `/v1/rag/query`: Fast, citation-backed RAG for direct question answering.
+    *   `/v1/agent/solve`: Multi-step reasoning agent (Plan → Retrieve → Answer → Validate) using LangGraph.
+*   **Traceability**: Every answer includes precise citations with similarity scores and links to source document chunks.
+*   **Provider Agnostic**: Switch between OpenAI, Anthropic, and HuggingFace models via environment variables.
+*   **Local-First**: Default setup uses local embeddings (SentenceTransformers) and vector store (FAISS) for zero-cost operation.
+*   **Production Ready**: Includes Pydantic validation, structured logging, Docker support, and a scalable directory structure.
+
+## 🏗️ Architecture
+
+```mermaid
+graph TD
+    Client[Client Apps] --> API[FastAPI Gateway]
+    
+    subgraph "Agentic LLM Demo"
+        API -->|/v1/rag/query| RAG[RAG Service]
+        API -->|/v1/agent/solve| Agent[LangGraph Agent]
+        
+        RAG --> Retriever
+        Agent --> Planner
+        Agent --> Retriever
+        Agent --> Validator
+        
+        Retriever -->|Search| VectorDB[(FAISS Vector Store)]
+        Retriever -->|Embed| Embed[SentenceTransformers]
+    end
+    
+    Planner & RAG & Validator -->|Generate| LLM[LLM Provider]
+    LLM --> OpenAI
+    LLM --> Anthropic
+    LLM --> HuggingFace
+```
+
+## 🛠️ Tech Stack
+
+*   **Runtime**: Python 3.11+
+*   **API**: FastAPI, Uvicorn
+*   **Orchestration**: LangGraph, LangChain
+*   **Vector Store**: FAISS (Local)
+*   **Embeddings**: SentenceTransformers (all-MiniLM-L6-v2)
+*   **Validation**: Pydantic v2
+*   **Deployment**: Docker, Docker Compose
+
+## ⚡ Quickstart
+
+### Prerequisites
+
+*   Python 3.11 or higher
+*   Git
+
+### Local Setup
+
+1.  **Clone the repository**
+    ```bash
+    git clone https://github.com/skydeamon/agentic-rag-llm-demo.git
+    cd agentic-rag-llm-demo
+    ```
+
+2.  **Set up environment**
+    ```bash
+    python -m venv .venv
+    source .venv/bin/activate  # Windows: .venv\Scripts\activate
+    pip install -r requirements.txt
+    ```
+
+3.  **Configure Environment**
+    Copy the example configuration and set your API keys.
+    ```bash
+    cp .env.example .env
+    # Edit .env to add your OPENAI_API_KEY, ANTHROPIC_API_KEY, etc.
+    ```
+
+4.  **Ingest Documents**
+    Load sample documents into the local vector store.
+    ```bash
+    bash scripts/ingest.sh
+    ```
+
+5.  **Run the API**
+    Start the development server.
+    ```bash
+    bash scripts/dev_run.sh
+    ```
+    The API will be available at [http://localhost:8000](http://localhost:8000).
+
+6.  **Explore Documentation**
+    Visit [http://localhost:8000/docs](http://localhost:8000/docs) to test endpoints interactively via Swagger UI.
+
+### Docker Setup
+
+1.  **Build the image**
+    ```bash
+    docker build -t agentic-llm-demo -f docker/Dockerfile .
+    ```
+
+2.  **Run the container**
+    ```bash
+    docker run --rm -p 8000:8000 --env-file .env agentic-llm-demo
+    ```
+
+## 📂 Project Structure
 
 ```
-clients → FastAPI
-          ├── /v1/rag/query  (RAG: retrieve → synthesize → cite)
-          └── /v1/agent/solve (LangGraph: plan → retrieve → answer → validate)
-
-RAG store: FAISS (local) — built from /data/sample_docs via /scripts/ingest.sh
-Embeddings: sentence‑transformers (default) or provider embeddings
-LLM: provider‑agnostic (OpenAI/Anthropic/HF via env)
-Observability: simple request/response logs and validation errors
+agentic-rag-llm-demo/
+├── app/
+│   ├── main.py              # FastAPI application entry point
+│   ├── api/                 # Endpoint routers
+│   ├── rag/                 # RAG logic (ingestion, retrieval)
+│   ├── agent/               # LangGraph agent definitions
+│   └── safety/              # Validators and guardrails
+├── data/
+│   └── sample_docs/         # Source documents for ingestion
+├── docker/                  # Docker configuration
+├── scripts/                 # Utility scripts (ingest, run)
+├── tests/                   # Unit and integration tests
+├── .env.example             # Environment variable template
+├── requirements.txt         # Python dependencies
+└── README.md                # Project documentation
 ```
 
-## Quickstart
+## 🔧 Configuration
+
+The application is configured using environment variables in the `.env` file.
+
+| Variable | Description | Default |
+| :--- | :--- | :--- |
+| `PROVIDER` | LLM Provider to use (`openai`, `anthropic`, `huggingface`) | `openai` |
+| `MODEL_NAME` | Model identifier (e.g., `gpt-4o-mini`, `claude-3-opus`) | `gpt-4o-mini` |
+| `OPENAI_API_KEY` | API Key for OpenAI | - |
+| `ANTHROPIC_API_KEY` | API Key for Anthropic | - |
+| `EMBEDDINGS_MODEL` | HuggingFace model for local embeddings | `all-MiniLM-L6-v2` |
+| `VECTOR_STORE_PATH` | Path to persist FAISS index | `.vector_store/faiss` |
+
+## 🧪 Testing
+
+Run the test suite to ensure everything is working correctly.
 
 ```bash
-# 1) Setup
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env  # set provider/API keys as needed
+# Run all tests
+pytest
 
-# 2) Ingest example docs into FAISS
-bash scripts/ingest.sh
-
-# 3) Run API
-bash scripts/dev_run.sh
-# open http://localhost:8000/docs
+# Run specific test file
+pytest tests/test_rag.py
 ```
 
-### Docker
-```bash
-docker build -t cerebria-llm-demo -f docker/Dockerfile .
-docker run --rm -p 8000:8000 --env-file .env cerebria-llm-demo
-```
+## 🛡️ License
 
-## Endpoints
-- `POST /v1/rag/query` → `{ query: str, top_k?: int }` → `{ answer, citations:[{id, score, source, chunk}] }`
-- `POST /v1/agent/solve` → `{ question: str }` → `{ answer, steps, citations }`
-- `GET  /health` → health probe
-
-## Project Layout
-```
-app/
-  main.py               # FastAPI bootstrap & routers
-  config.py             # env & settings
-  api/rag.py            # /v1/rag endpoints
-  api/agent.py          # /v1/agent endpoints
-  rag/ingest.py         # build FAISS index from data/
-  rag/retriever.py      # retrieval wrapper
-  agent/graph.py        # basic LangGraph flow
-  safety/validators.py  # output schema & simple guardrails
-
-data/sample_docs/      # seed corpus (replace with your content)
-scripts/ingest.sh      # run ingestion
-scripts/dev_run.sh     # launch server
-
-tests/                 # pytest skeletons
-```
-
-## Configuration
-Set **`.env`**:
-- `PROVIDER=openai|anthropic|huggingface`
-- `MODEL_NAME` → e.g., `gpt-4o-mini`
-- `EMBEDDINGS_PROVIDER=sentence-transformers|provider`
-- `EMBEDDINGS_MODEL=all-MiniLM-L6-v2`
-- `VECTOR_STORE_PATH=.vector_store/faiss`
-
-## Evaluation Hooks (lightweight)
-- Deterministic output schema (Pydantic) for both endpoints
-- Simple format validation + presence of citations
-- Placeholders for factual checks and regression sets in `tests/`
-
-## Safety Notes
-- Mask/strip PII at ingestion if needed
-- Enforce max context and deterministic prompt structure
-- Add **fallbacks** when retrieval returns low confidence
-- Log inputs/outputs with correlation IDs for auditability
-
-## Extending
-- Swap FAISS for pgvector/Weaviate/Pinecone
-- Add rerankers (e.g., cross‑encoder) after initial retrieval
-- Add offline eval suites for factuality, completeness, and toxicity
-- Introduce caching (semantic + response) and cost/latency monitoring
-
----
-
-**License:** MIT (for scaffold). Replace with your own for production.
+MIT License. See `LICENSE` for details.
